@@ -4,13 +4,25 @@ define(["angular"], function(angular) {
   ngModule.config([
     "ViewsProvider",
     "$routeProvider",
-    function(ViewsProvider, routeProvider) {
+    "PluginsProvider",
+    function(ViewsProvider, routeProvider, PluginsProvider) {
       routeProvider.when("/plugins", {
         template: "<p>Hello world</p>",
         controller: [
           "$scope",
-          function($scope) {
+          "Plugins",
+          function($scope, Plugins) {
             $scope.$root.showBreadcrumbs = false;
+            console.log("Plugins", Plugins.getAllProviders("view"));
+
+            const groupedPlugins = Plugins.getAllProviders("view");
+
+            const pluginCount = Object.values(groupedPlugins).reduce(
+              (acc, curr) => acc + curr.length,
+              0
+            );
+
+            console.log("count", pluginCount);
           }
         ],
         authentication: "required"
@@ -25,6 +37,8 @@ define(["angular"], function(angular) {
           return path.indexOf("#/plugins") > -1;
         }
       });
+
+      console.log("plp", PluginsProvider);
     }
   ]);
 
