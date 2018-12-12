@@ -123,6 +123,7 @@ const template = `
 .pluginStore .removeOverlay span {
   transform: rotate(-20deg);
   display: inline-block;
+  -webkit-text-stroke: 3px darkred;
 }
 
 .checkmark {
