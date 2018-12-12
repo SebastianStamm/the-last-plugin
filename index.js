@@ -77,27 +77,92 @@ const template = `
   }
 }
 
+.pluginStore li {
+  list-style: none;
+  border: 1px solid black;
+  display: inline-block;
+  background-color: white;
+  padding: 15px;
+  height: 250px;
+  margin: 10px;
+  position: relative;
+  box-shadow: 5px 5px 5px lightgrey;
+}
+
+.pluginStore .successOverlay {
+  position: absolute;
+  pointer-events: none;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(51, 255, 83, 0.15);
+  padding-top: 100px;
+  text-align: center;
+  filter: drop-shadow(0 0 0.75rem green);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.checkmark {
+  display:inline-block;
+  width: 22px;
+  height:22px;
+  transform: scale(15) rotate(45deg);
+  filter: drop-shadow(0 0 .4px green);
+}
+
+.checkmark div {
+  background-color:#29e61a;
+}
+
+.checkmark_stem {
+  position: absolute;
+  width:3px;
+  height:9px;
+  left:11px;
+  top:6px;
+}
+
+.checkmark_kick {
+  position: absolute;
+  width:3px;
+  height:3px;
+  left:8px;
+  top:12px;
+}
+
 </style>
-<div class="dashboard">
+<div class="dashboard pluginStore">
   <h1>Plugin Store</h1>
   <h2>Available Plugins</h2>
   <ul>
-    <li ng-repeat="plugin in uninstalledPlugins" style="    list-style: none;
-    border: 1px solid black;
-    display: inline-block;
-    background-color: white;
-    padding: 15px;
-    height: 250px;
-    margin: 10px;
-    position: relative;
-    box-shadow: 5px 5px 5px lightgrey;">
+    <li ng-repeat="plugin in uninstalledPlugins">
       <img src="https://thecatapi.com/api/images/get?size=small&rnd={{plugin.id}}" style="height: 100%;" />
       <div style="float: right; margin-left: 15px; width: 300px;">
         <h3>{{plugin.title}}</h3>
         <p>{{plugin.description}}</p>
         </div>
-      <button class="installButton" ng-click="install(plugin)" ng-if="!isInstalling(plugin)">Install</button>
-      <button style="background-color:#ffc733; cursor: default;" class="installButton" ng-if="isInstalling(plugin)"><div class="loader">Loading</div></button>
+      <button class="installButton" ng-click="install(plugin)" ng-if="!isInstalling(plugin) && !isInstalled(plugin)">Install</button>
+      <button style="cursor: default;" class="installButton" ng-if="isInstalling(plugin)"><div class="loader">Loading</div></button>
+      <!--<button style="cursor: default; background-color: #33ff53;" class="installButton" ng-if="isInstalled(plugin)">Success</button>-->
+      <div class="successOverlay" id="overlay_{{plugin.id}}">
+      <span class="checkmark">
+        <div class="checkmark_stem"></div>
+        <div class="checkmark_kick"></div>
+      </span>
+      </div>
+    </li>
+  </ul>
+  <h2>Installed Plugins</h2>
+  <ul>
+    <li ng-repeat="plugin in installedPlugins">
+      <img src="https://thecatapi.com/api/images/get?size=small&rnd={{plugin.id}}" style="height: 100%;" />
+      <div style="float: right; margin-left: 15px; width: 300px;">
+        <h3>{{plugin.title}}</h3>
+        <p>{{plugin.description}}</p>
+        </div>
+      <button style="background-color:#ff3333;" class="installButton" ng-click="uninstall(plugin)">Remove</button>
     </li>
   </ul>
 </div>
@@ -133,21 +198,42 @@ define(["angular"], function(angular) {
             ];
 
             console.log("fetching installed plugins");
-            $scope.installedPlugins = [];
+            $scope.installedPlugins = ["b"].map(id =>
+              $scope.availablePlugins.find(plugin => plugin.id === id)
+            );
 
             $scope.uninstalledPlugins = $scope.availablePlugins.filter(
-              ({ id }) => !$scope.installedPlugins.includes(id)
+              ({ id }) =>
+                !$scope.installedPlugins.find(plugin => plugin.id === id)
             );
 
             $scope.installingPlugins = [];
+            $scope.successPlugins = [];
 
             $scope.install = plugin => {
               console.log("should install", plugin);
               $scope.installingPlugins.push(plugin.id);
+              setTimeout(() => {
+                $scope.successPlugins.push(plugin.id);
+                $scope.installingPlugins = $scope.installingPlugins.filter(
+                  id => id !== plugin.id
+                );
+                document.querySelector("#overlay_" + plugin.id).style.opacity =
+                  "1";
+                $scope.$apply();
+              }, 1000);
+            };
+
+            $scope.uninstall = plugin => {
+              console.log("should uninstall", plugin);
             };
 
             $scope.isInstalling = ({ id }) =>
               $scope.installingPlugins.includes(id);
+
+            $scope.isInstalled = ({ id }) => {
+              return $scope.successPlugins.includes(id);
+            };
           }
         ],
         authentication: "required"
