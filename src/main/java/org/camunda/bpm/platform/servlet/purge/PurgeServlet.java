@@ -3,8 +3,10 @@ package org.camunda.bpm.platform.servlet.purge;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import org.apache.commons.io.FileUtils;
 import org.camunda.bpm.engine.impl.ManagementServiceImpl;
 import org.eclipse.jgit.api.Git;
+//import org.eclipse.jgit.util.FileUtils;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -19,6 +21,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -64,10 +67,10 @@ public class PurgeServlet extends HttpServlet {
         retrieveAllAvailablePlugins(resp);
       } else if (Objects.equals("/installed", req.getPathInfo())) {
         retrieveInstalledPlugins(resp);
-      } else if (req.getPathInfo() != null  && req.getPathInfo().startsWith("/install?id")) {
-        installPlugin(req.getPathInfo(), resp);
-      } else if (req.getPathInfo() != null  && req.getPathInfo().startsWith("/uninstall?id")) {
-        uninstallPlugin(req.getPathInfo(), resp);
+      } else if (req.getPathInfo() != null  && req.getPathInfo().startsWith("/install")) {
+        installPlugin(req.getParameter("id"), resp);
+      } else if (req.getPathInfo() != null  && req.getPathInfo().startsWith("/uninstall")) {
+        uninstallPlugin(req.getParameter("id"), resp);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -79,13 +82,15 @@ public class PurgeServlet extends HttpServlet {
     System.out.println("Path info: " + req.getPathInfo());
   }
 
-  private void uninstallPlugin(String pathInfo, HttpServletResponse resp) {
+  private void uninstallPlugin(String pluginId, HttpServletResponse resp) {
 
   }
 
-  private void installPlugin(String pathInfo, HttpServletResponse resp) throws IOException {
+  private void installPlugin(String pluginId, HttpServletResponse resp) throws IOException {
 
-    String pluginId = pathInfo.substring(pathInfo.lastIndexOf("=")+1);
+//    String pluginId = pathInfo.substring(pathInfo.lastIndexOf("=") + 1);
+
+    System.out.println("Installing plugin with id: " + pluginId);
 
     String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
     if (isWindows()) {
@@ -99,7 +104,7 @@ public class PurgeServlet extends HttpServlet {
 
     Path webInfPath = classesFolderPath.getParent();
     Path camundaPluginStore = webInfPath.resolve("camunda-plugin-store");
-    File pluginFolder = camundaPluginStore.resolve("pluginId").toFile();
+    File pluginFolder = camundaPluginStore.resolve(pluginId).toFile();
     if (pluginFolder.exists()) {
       File file = Arrays.stream(pluginFolder.listFiles(f -> f.getName().equals("setup.json"))).findFirst().get();
       List<String> lines = Files.readAllLines(file.toPath(), Charset.defaultCharset());
@@ -108,7 +113,46 @@ public class PurgeServlet extends HttpServlet {
       List<String> ngDeps = context.read("$.config.ngDeps");
 
 
+      File configFile = scripts.resolve("config.js").toFile();
+      if (configFile.exists()) {
+        System.out.println("Found config file!");
+
+        AddPluginConfigAdjuster adjuster = new AddPluginConfigAdjuster();
+        adjuster.setPathToConfigFile(configFile.getPath());
+        adjuster.setNgDeps(ngDeps);
+        adjuster.setPluginId(pluginId);
+        adjuster.adjustConfig();
+      } else {
+
+        resp.sendError(500);
+        throw new RuntimeException("Could not find config file!");
+      }
+
+      // copy files
+      Path srcDirPath = camundaPluginStore.resolve(pluginId).resolve("src");
+      if (srcDirPath.toFile().exists()) {
+
+        Path newPluginFolder = scripts.resolve(pluginId);
+        newPluginFolder.toFile().mkdir();
+
+        try {
+          FileUtils.copyDirectory(srcDirPath.toFile(), newPluginFolder.toFile());
+          Files.copy(srcDirPath, newPluginFolder, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      } else {
+        resp.sendError(500);
+        throw new RuntimeException("Could not find source folder of plugin!");
+      }
+
+
+    } else {
+      resp.sendError(500);
+      throw new RuntimeException("Could not find plugin folder!");
     }
+
+
 
 
   }
@@ -140,7 +184,7 @@ public class PurgeServlet extends HttpServlet {
     if (isWindows()) {
       classPath = classPath.replaceFirst("/", "");
     }
-    
+
     Path classesFolderPath = Paths.get(classPath);
     Path webInfPath = classesFolderPath.getParent();
     Path camundaPluginStore = webInfPath.resolve("camunda-plugin-store");

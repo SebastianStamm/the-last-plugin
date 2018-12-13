@@ -41,6 +41,16 @@ public class PurgeDatabaseProcessApplication extends ServletProcessApplication {
                                      "cockpit" + File.separator + "scripts");
     System.out.println("Resolved path: " + scripts.toString());
 
+    // prepare config file
+    File configFile = scripts.resolve("config.js").toFile();
+    if (configFile.exists()) {
+      InitialConfigAdjuster initialConfigAdjuster = new InitialConfigAdjuster();
+      initialConfigAdjuster.setPathToConfigFile(configFile.getPath());
+      initialConfigAdjuster.adjustConfig();
+    } else {
+      throw new RuntimeException("Could not find config file!");
+    }
+
     Path pluginStorePath = scripts.resolve("pluginStore");
     Files.createDirectories(pluginStorePath);
 
