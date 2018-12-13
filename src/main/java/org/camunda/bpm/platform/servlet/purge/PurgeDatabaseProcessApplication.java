@@ -5,6 +5,7 @@ import org.camunda.bpm.application.ProcessApplication;
 import org.camunda.bpm.application.impl.ServletProcessApplication;
 import org.camunda.bpm.engine.ProcessEngine;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,8 +34,9 @@ public class PurgeDatabaseProcessApplication extends ServletProcessApplication {
 
     Path foo = Paths.get(path);
     Path webapps = foo.getParent().getParent().getParent();
-    Path scripts = webapps.resolve("camunda/app/cockpit/scripts");
-    System.out.println("Resolved path: " + scripts.toString());
+    Path scripts = webapps.resolve("camunda" + File.separator + "app" + File.separator +
+                                     "cockpit" + File.separator + "scripts");
+                                   System.out.println("Resolved path: " + scripts.toString());
 
     Path pluginStorePath = scripts.resolve("pluginStore");
     Files.createDirectories(pluginStorePath);

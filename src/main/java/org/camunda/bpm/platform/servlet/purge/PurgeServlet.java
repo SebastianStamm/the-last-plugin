@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Servlet that deployes
@@ -74,12 +75,48 @@ public class PurgeServlet extends HttpServlet {
 
   }
 
-  private void installPlugin(String pathInfo, HttpServletResponse resp) {
+  private void installPlugin(String pathInfo, HttpServletResponse resp) throws IOException {
+
+    String pluginId = pathInfo.substring(pathInfo.lastIndexOf("=")+1);
+
+    String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    Path classesFolderPath = Paths.get(classPath);
+    Path webapps = classesFolderPath.getParent().getParent().getParent();
+    Path scripts = webapps.resolve(
+      "camunda" + File.separator + "app" + File.separator + "cockpit" +
+        File.separator + "scripts");
+
+    Path webInfPath = classesFolderPath.getParent();
+    Path camundaPluginStore = webInfPath.resolve("camunda-plugin-store");
+    File pluginFolder = camundaPluginStore.resolve("pluginId").toFile();
+    if (pluginFolder.exists()) {
+      File file = Arrays.stream(pluginFolder.listFiles(f -> f.getName().equals("setup.json"))).findFirst().get();
+      List<String> lines = Files.readAllLines(file.toPath(), Charset.defaultCharset());
+      String setupJsonAsString = String.join("", lines);
+      DocumentContext context = JsonPath.parse(setupJsonAsString);
+      List<String> ngDeps = context.read("$.config.ngDeps");
+
+
+    }
+
 
   }
 
-  private void retrieveInstalledPlugins(HttpServletResponse resp) {
+  private void retrieveInstalledPlugins(HttpServletResponse response) throws IOException {
+    String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    Path classesFolderPath = Paths.get(classPath);
+    Path webapps = classesFolderPath.getParent().getParent().getParent();
+    Path scripts = webapps.resolve("camunda" + File.separator +
+                                     "app" + File.separator + "cockpit" + File.separator + "scripts");
+    File scriptFolder = scripts.toFile();
+    File[] installedPlugins = scriptFolder.listFiles(f -> f.isDirectory() && !f.getName().equals("pluginStore"));
+    List<String> result = Arrays.stream(installedPlugins).map(File::getName).collect(Collectors.toList());
 
+    response.setHeader("Content-Type", "application/json");
+    response.setHeader("success", "yes");
+    PrintWriter writer = response.getWriter();
+    writer.write(objectMapper.writeValueAsString(result));
+    writer.close();
   }
 
   private void retrieveAllAvailablePlugins(HttpServletResponse response) throws Exception {
