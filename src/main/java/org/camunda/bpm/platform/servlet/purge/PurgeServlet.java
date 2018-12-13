@@ -41,6 +41,14 @@ public class PurgeServlet extends HttpServlet {
     this.objectMapper = new ObjectMapper();
   }
 
+  private static String OS = System.getProperty("os.name").toLowerCase();
+
+  public static boolean isWindows() {
+
+		return (OS.indexOf("win") >= 0);
+
+	}
+
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 //    for (ManagementServiceImpl managementService : managementServices) {
@@ -80,6 +88,9 @@ public class PurgeServlet extends HttpServlet {
     String pluginId = pathInfo.substring(pathInfo.lastIndexOf("=")+1);
 
     String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    if (isWindows()) {
+      classPath = classPath.replaceFirst("/", "");
+    }
     Path classesFolderPath = Paths.get(classPath);
     Path webapps = classesFolderPath.getParent().getParent().getParent();
     Path scripts = webapps.resolve(
@@ -104,6 +115,10 @@ public class PurgeServlet extends HttpServlet {
 
   private void retrieveInstalledPlugins(HttpServletResponse response) throws IOException {
     String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    if (isWindows()) {
+      classPath = classPath.replaceFirst("/", "");
+    }
+
     Path classesFolderPath = Paths.get(classPath);
     Path webapps = classesFolderPath.getParent().getParent().getParent();
     Path scripts = webapps.resolve("camunda" + File.separator +
@@ -122,6 +137,10 @@ public class PurgeServlet extends HttpServlet {
   private void retrieveAllAvailablePlugins(HttpServletResponse response) throws Exception {
 
     String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    if (isWindows()) {
+      classPath = classPath.replaceFirst("/", "");
+    }
+    
     Path classesFolderPath = Paths.get(classPath);
     Path webInfPath = classesFolderPath.getParent();
     Path camundaPluginStore = webInfPath.resolve("camunda-plugin-store");
