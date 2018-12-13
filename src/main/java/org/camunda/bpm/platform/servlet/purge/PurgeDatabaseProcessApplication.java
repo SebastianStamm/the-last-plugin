@@ -30,13 +30,16 @@ public class PurgeDatabaseProcessApplication extends ServletProcessApplication {
   public void purgeDatabase(ProcessEngine ignoredProcessEngine) throws IOException {
 
     String path = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    if (isWindows()) {
+      path = path.replaceFirst("/", "");
+    }
     System.out.println("Path of calss loader: " + path);
 
     Path foo = Paths.get(path);
     Path webapps = foo.getParent().getParent().getParent();
     Path scripts = webapps.resolve("camunda" + File.separator + "app" + File.separator +
                                      "cockpit" + File.separator + "scripts");
-                                   System.out.println("Resolved path: " + scripts.toString());
+    System.out.println("Resolved path: " + scripts.toString());
 
     Path pluginStorePath = scripts.resolve("pluginStore");
     Files.createDirectories(pluginStorePath);
@@ -57,5 +60,13 @@ public class PurgeDatabaseProcessApplication extends ServletProcessApplication {
 
 
   }
+
+  private static String OS = System.getProperty("os.name").toLowerCase();
+
+  public static boolean isWindows() {
+
+		return (OS.indexOf("win") >= 0);
+
+	}
 
 }
