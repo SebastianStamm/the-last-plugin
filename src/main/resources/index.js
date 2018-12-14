@@ -230,7 +230,8 @@ const template = `
     <h2>Available Plugins</h2>
     <ul>
       <li ng-repeat="plugin in availablePlugins">
-        <img src="/store/image/{{plugin.id}}.png" style="height: 100%;" />
+        <div style="display: inline; height: 100%; width: 325px; flex: none; background-size: cover; background-image: url(/store/image/{{plugin.id}}.png); background-position: center;"></div>
+        <!--img src="/store/image/{{plugin.id}}.png" style="height: 100%;" /-->
         <div style="float: right; margin-left: 15px;">
           <h3>{{plugin.title}}</h3>
           <p>{{plugin.description}}</p>
@@ -250,7 +251,8 @@ const template = `
     <h2>Installed Plugins</h2>
     <ul>
       <li ng-repeat="plugin in installedPlugins">
-        <img src="/store/image/{{plugin.id}}.png" style="height: 100%;" />
+      <div style="display: inline; height: 100%; width: 325px; flex: none; background-size: cover; background-image: url(/store/image/{{plugin.id}}.png); background-position: center;"></div>
+        <!--img src="/store/image/{{plugin.id}}.png" style="height: 100%;" /-->
         <div style="float: right; margin-left: 15px;">
           <h3>{{plugin.title}}</h3>
           <p>{{plugin.description}}</p>
@@ -263,7 +265,7 @@ const template = `
       </li>
     </ul>
   </div>
-  <div style="position: absolute; top: 122px; opacity: 0; transform: scale(.5); transition: 1s;" id="enterpriseHack">
+  <div style="position: absolute; top: 122px; opacity: 0; transform: scale(.5); transition: 1s; display: none;" id="enterpriseHack">
       <ul>
         <li style="width: 1420px;">
           <img src="https://www.livingwellaware.com/wp-content/uploads/2018/07/SUCCESS.jpg" style="height: 100%;" />
@@ -320,32 +322,30 @@ define(["angular"], function(angular) {
             $scope.successPlugins = [];
             $scope.uninstalledPlugins = [];
 
-            $scope.install = plugin => {
-              console.log("should install", plugin);
+            $scope.install = async plugin => {
               $scope.installingPlugins.push(plugin.id);
-              setTimeout(() => {
-                $scope.successPlugins.push(plugin.id);
-                $scope.installingPlugins = $scope.installingPlugins.filter(
-                  id => id !== plugin.id
-                );
-                document.querySelector("#overlay_" + plugin.id).style.opacity =
-                  "1";
-                $scope.$apply();
-              }, 1500);
+              console.log("should install", plugin);
+              await fetch("/store/install?id=" + plugin.id);
+              $scope.successPlugins.push(plugin.id);
+              $scope.installingPlugins = $scope.installingPlugins.filter(
+                id => id !== plugin.id
+              );
+              document.querySelector("#overlay_" + plugin.id).style.opacity =
+                "1";
+              $scope.$apply();
             };
 
-            $scope.uninstall = plugin => {
-              console.log("should uninstall", plugin);
+            $scope.uninstall = async plugin => {
               $scope.uninstallingPlugins.push(plugin.id);
-              setTimeout(() => {
-                $scope.uninstalledPlugins.push(plugin.id);
-                $scope.uninstallingPlugins = $scope.uninstallingPlugins.filter(
-                  id => id !== plugin.id
-                );
-                document.querySelector("#overlay_" + plugin.id).style.opacity =
-                  "1";
-                $scope.$apply();
-              }, 1000);
+              console.log("should uninstall", plugin);
+              await fetch("/store/uninstall?id=" + plugin.id);
+              $scope.uninstalledPlugins.push(plugin.id);
+              $scope.uninstallingPlugins = $scope.uninstallingPlugins.filter(
+                id => id !== plugin.id
+              );
+              document.querySelector("#overlay_" + plugin.id).style.opacity =
+                "1";
+              $scope.$apply();
             };
 
             $scope.isInstalling = ({ id }) =>
@@ -386,9 +386,10 @@ document.addEventListener("keydown", evt => {
     console.log("providing entreprise");
     const ul = document.querySelector(".pluginStore ul");
     ul.style.marginTop = "280px";
+    const ee = document.querySelector("#enterpriseHack");
+    ee.style.display = "block";
 
     setTimeout(() => {
-      const ee = document.querySelector("#enterpriseHack");
       ee.style.opacity = "1";
       ee.style.transform = "scale(1)";
     }, 1000);
