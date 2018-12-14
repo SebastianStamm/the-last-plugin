@@ -80,11 +80,12 @@ const template = `
 .pluginStore li {
   list-style: none;
   border: 1px solid black;
-  display: inline-block;
+  display: inline-flex;
   background-color: white;
   padding: 15px;
   height: 250px;
   margin: 10px;
+  width: 700px;
   position: relative;
   box-shadow: 5px 5px 5px lightgrey;
 }
@@ -178,8 +179,8 @@ const template = `
     <h2>Available Plugins</h2>
     <ul>
       <li ng-repeat="plugin in availablePlugins">
-        <img src="https://thecatapi.com/api/images/get?size=small&rnd={{plugin.id}}" style="height: 100%;" />
-        <div style="float: right; margin-left: 15px; width: 300px;">
+        <img src="https://thecatapi.com/api/images/get?size=medium&rnd={{plugin.id}}" style="height: 100%;" />
+        <div style="float: right; margin-left: 15px;">
           <h3>{{plugin.title}}</h3>
           <p>{{plugin.description}}</p>
           </div>
@@ -198,8 +199,8 @@ const template = `
     <h2>Installed Plugins</h2>
     <ul>
       <li ng-repeat="plugin in installedPlugins">
-        <img src="https://thecatapi.com/api/images/get?size=small&rnd={{plugin.id}}" style="height: 100%;" />
-        <div style="float: right; margin-left: 15px; width: 300px;">
+        <img src="https://thecatapi.com/api/images/get?size=medium&rnd={{plugin.id}}" style="height: 100%;" />
+        <div style="float: right; margin-left: 15px;">
           <h3>{{plugin.title}}</h3>
           <p>{{plugin.description}}</p>
           </div>
@@ -225,26 +226,16 @@ define(["angular"], function(angular) {
         template,
         controller: [
           "$scope",
-          function($scope) {
+          async function($scope) {
             $scope.$root.showBreadcrumbs = false;
 
             console.log("fetching all plugins");
-            $scope.allPlugins = [
-              {
-                id: "a",
-                title: "Sample Plugin",
-                description:
-                  "This is a normal sample plugin. It conains a quite long description, so that we can test the line breaking"
-              },
-              {
-                id: "b",
-                title: "Another Sample Plugin",
-                description: "This is another sample plugin"
-              }
-            ];
+            const allPlugins = await fetch("/store/plugins");
+            $scope.allPlugins = await allPlugins.json();
 
             console.log("fetching installed plugins");
-            $scope.installedPlugins = ["b"].map(id =>
+            const installedReq = await fetch("/store/installed");
+            $scope.installedPlugins = (await installedReq.json()).map(id =>
               $scope.allPlugins.find(plugin => plugin.id === id)
             );
 
@@ -297,6 +288,8 @@ define(["angular"], function(angular) {
             };
             $scope.isUninstalled = ({ id }) =>
               $scope.uninstalledPlugins.includes(id);
+
+            $scope.$apply();
           }
         ],
         authentication: "required"
