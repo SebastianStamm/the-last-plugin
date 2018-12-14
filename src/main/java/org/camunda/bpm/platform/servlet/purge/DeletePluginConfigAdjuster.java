@@ -16,7 +16,7 @@ import com.jayway.jsonpath.DocumentContext;
 
 import java.util.List;
 
-public class AddPluginConfigAdjuster extends ConfigAdjuster {
+public class DeletePluginConfigAdjuster extends ConfigAdjuster {
 
   private String pluginId;
   private List<String> ngDeps;
@@ -33,19 +33,19 @@ public class AddPluginConfigAdjuster extends ConfigAdjuster {
     String arrayPath = "$.customScripts";
     String arrayField = "ngDeps";
     for (String ngDep : ngDeps) {
-      customScriptsContext = addEntryToArray(customScriptsContext, arrayPath, arrayField, ngDep);
+      customScriptsContext = deleteEntryFromArray(customScriptsContext, arrayPath, arrayField, ngDep);
     }
-    customScriptsContext = addEntryToArray(customScriptsContext, "$.customScripts", "deps", pluginId);
+    customScriptsContext = deleteEntryFromArray(customScriptsContext, "$.customScripts", "deps", pluginId);
 
-    customScriptsContext = customScriptsContext.set("$.customScripts.paths." + pluginId, "scripts/" +pluginId + "/index");
-    Object pathPluginStore = customScriptsContext.read("$.customScripts.paths." + pluginId);
-    if (pathPluginStore == null) {
-      customScriptsContext = customScriptsContext.put(
-        "$.customScripts.paths",
-        pluginId,
-        "scripts/" +pluginId + "/index"
-      );
-    }
+    customScriptsContext = customScriptsContext.delete("$.customScripts.paths." + pluginId);
+    return customScriptsContext;
+  }
+
+  protected DocumentContext deleteEntryFromArray(DocumentContext customScriptsContext, String arrayPath,
+                                          String arrayField, String value) {
+    List<String> nDepsList = customScriptsContext.read(arrayPath + "." + arrayField);
+    nDepsList.removeIf(e -> e.equals(value));
+    customScriptsContext = customScriptsContext.put(arrayPath, arrayField, nDepsList);
     return customScriptsContext;
   }
 }

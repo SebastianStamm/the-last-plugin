@@ -82,13 +82,65 @@ public class PurgeServlet extends HttpServlet {
     System.out.println("Path info: " + req.getPathInfo());
   }
 
-  private void uninstallPlugin(String pluginId, HttpServletResponse resp) {
+  private void uninstallPlugin(String pluginId, HttpServletResponse resp) throws IOException {
 
+    System.out.println("Uninstalling plugin with id: " + pluginId);
+
+    String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    if (isWindows()) {
+      classPath = classPath.replaceFirst("/", "");
+    }
+    Path classesFolderPath = Paths.get(classPath);
+    Path webapps = classesFolderPath.getParent().getParent().getParent();
+    Path scripts = webapps.resolve(
+      "camunda" + File.separator + "app" + File.separator + "cockpit" +
+        File.separator + "scripts");
+
+    Path webInfPath = classesFolderPath.getParent();
+    Path camundaPluginStore = webInfPath.resolve("camunda-plugin-store");
+    File pluginFolder = camundaPluginStore.resolve(pluginId).toFile();
+    if (pluginFolder.exists()) {
+      File file = Arrays.stream(pluginFolder.listFiles(f -> f.getName().equals("setup.json"))).findFirst().get();
+      List<String> lines = Files.readAllLines(file.toPath(), Charset.defaultCharset());
+      String setupJsonAsString = String.join("", lines);
+      DocumentContext context = JsonPath.parse(setupJsonAsString);
+      List<String> ngDeps = context.read("$.config.ngDeps");
+
+
+      File configFile = scripts.resolve("config.js").toFile();
+      if (configFile.exists()) {
+        System.out.println("Found config file!");
+
+        DeletePluginConfigAdjuster adjuster = new DeletePluginConfigAdjuster();
+        adjuster.setPathToConfigFile(configFile.getPath());
+        adjuster.setNgDeps(ngDeps);
+        adjuster.setPluginId(pluginId);
+        adjuster.adjustConfig();
+      } else {
+
+        resp.sendError(500);
+        throw new RuntimeException("Could not find config file!");
+      }
+
+      // delete plugin folder
+      Path srcDirPath = camundaPluginStore.resolve(pluginId).resolve("src");
+      if (srcDirPath.toFile().exists()) {
+
+        Path pluginFolderInScriptDir = scripts.resolve(pluginId);
+        FileUtils.deleteDirectory(pluginFolderInScriptDir.toFile());
+      } else {
+        resp.sendError(500);
+        throw new RuntimeException("Could not find source folder of plugin!");
+      }
+
+
+    } else {
+      resp.sendError(500);
+      throw new RuntimeException("Could not find plugin folder!");
+    }
   }
 
   private void installPlugin(String pluginId, HttpServletResponse resp) throws IOException {
-
-//    String pluginId = pathInfo.substring(pathInfo.lastIndexOf("=") + 1);
 
     System.out.println("Installing plugin with id: " + pluginId);
 
@@ -151,9 +203,6 @@ public class PurgeServlet extends HttpServlet {
       resp.sendError(500);
       throw new RuntimeException("Could not find plugin folder!");
     }
-
-
-
 
   }
 
