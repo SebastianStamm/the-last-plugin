@@ -39,6 +39,15 @@ public abstract class ConfigAdjuster {
     "    }\n" +
     "\n" +
     "  }";
+
+  private final String LOCALES =
+    "{\n" +
+        "\n" +
+    "    \"availableLocales\": [\"en\"],\n" +
+        "\n" +
+    "    \"fallbackLocale\": \"en\"\n" +
+        "\n" +
+    "}";
   private String pathToConfigFile;
 
   public void setPathToConfigFile(String pathToConfigFile) {
@@ -81,6 +90,8 @@ public abstract class ConfigAdjuster {
 
     Configuration conf = Configuration.defaultConfiguration().addOptions(Option.SUPPRESS_EXCEPTIONS);
     DocumentContext parse = JsonPath.using(conf).parse(json);
+
+    // create custom scripts if does not exists
     Object customSCriptObject = objectMapper.readValue(CUSTOM_SCRIPTS, Map.class);
     Object result = parse.read("$.customScripts");
     String jsonString = parse.jsonString();
@@ -88,9 +99,15 @@ public abstract class ConfigAdjuster {
       jsonString = parse.put("$", "customScripts", customSCriptObject).jsonString();
     }
 
+    // create locales for translations if does not exists
+    Object defaultLocalesAsMap = objectMapper.readValue(LOCALES, Map.class);
+    Object currentLocales = parse.read("$.locales");
+    if (currentLocales == null) {
+      jsonString = parse.put("$", "locales", defaultLocalesAsMap).jsonString();
+    }
+
     // add plugin store stuff
     DocumentContext customScriptsContext = JsonPath.using(conf).parse(jsonString);
-
     customScriptsContext = adjustCustomScripts(customScriptsContext);
 
 
@@ -126,6 +143,14 @@ public abstract class ConfigAdjuster {
     List nDepsList = customScriptsContext.read(arrayPath + "." + arrayField);
     nDepsList.removeIf(e -> e.equals(value));
     nDepsList.add(value);
+    customScriptsContext = customScriptsContext.put(arrayPath, arrayField, nDepsList);
+    return customScriptsContext;
+  }
+
+  protected DocumentContext deleteEntryFromArray(DocumentContext customScriptsContext, String arrayPath,
+                                          String arrayField, String value) {
+    List<String> nDepsList = customScriptsContext.read(arrayPath + "." + arrayField);
+    nDepsList.removeIf(e -> e.equals(value));
     customScriptsContext = customScriptsContext.put(arrayPath, arrayField, nDepsList);
     return customScriptsContext;
   }

@@ -16,7 +16,7 @@ import com.jayway.jsonpath.DocumentContext;
 
 import java.util.List;
 
-public class AddPluginConfigAdjuster extends ConfigAdjuster {
+public class AddCustomScriptsPluginConfigAdjuster extends ConfigAdjuster {
 
   private String pluginId;
   private List<String> ngDeps;

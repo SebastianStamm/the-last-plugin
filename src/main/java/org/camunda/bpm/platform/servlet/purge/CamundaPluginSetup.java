@@ -12,19 +12,16 @@
  */
 package org.camunda.bpm.platform.servlet.purge;
 
-public class CamundaPlugin {
+import java.util.Map;
 
-  private String id;
+public class CamundaPluginSetup {
+
   private String title;
   private String description;
+  private String app;
+  private String type;
+  private Map<String, Object> config;
 
-  public String getId() {
-    return id;
-  }
-
-  public void setId(String id) {
-    this.id = id;
-  }
 
   public String getTitle() {
     return title;
@@ -40,5 +37,40 @@ public class CamundaPlugin {
 
   public void setDescription(String description) {
     this.description = description;
+  }
+
+  public String getApp() {
+    return app;
+  }
+
+  public void setApp(String app) {
+    this.app = app;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public void setType(String type) {
+    this.type = type;
+  }
+
+  public Map<String, Object> getConfig() {
+    return config;
+  }
+
+  public void setConfig(Map<String, Object> config) {
+    this.config = config;
+  }
+
+  @Override
+  public String toString() {
+    return "CamundaPluginSetup{" +
+      "title='" + title + '\'' +
+      ", description='" + description + '\'' +
+      ", app='" + app + '\'' +
+      ", type='" + type + '\'' +
+      ", config=" + config +
+      '}';
   }
 }

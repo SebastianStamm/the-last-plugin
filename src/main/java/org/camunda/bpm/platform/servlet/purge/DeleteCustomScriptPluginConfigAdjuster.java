@@ -16,7 +16,7 @@ import com.jayway.jsonpath.DocumentContext;
 
 import java.util.List;
 
-public class DeletePluginConfigAdjuster extends ConfigAdjuster {
+public class DeleteCustomScriptPluginConfigAdjuster extends ConfigAdjuster {
 
   private String pluginId;
   private List<String> ngDeps;
@@ -38,14 +38,6 @@ public class DeletePluginConfigAdjuster extends ConfigAdjuster {
     customScriptsContext = deleteEntryFromArray(customScriptsContext, "$.customScripts", "deps", pluginId);
 
     customScriptsContext = customScriptsContext.delete("$.customScripts.paths." + pluginId);
-    return customScriptsContext;
-  }
-
-  protected DocumentContext deleteEntryFromArray(DocumentContext customScriptsContext, String arrayPath,
-                                          String arrayField, String value) {
-    List<String> nDepsList = customScriptsContext.read(arrayPath + "." + arrayField);
-    nDepsList.removeIf(e -> e.equals(value));
-    customScriptsContext = customScriptsContext.put(arrayPath, arrayField, nDepsList);
     return customScriptsContext;
   }
 }

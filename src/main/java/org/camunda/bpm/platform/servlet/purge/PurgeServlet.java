@@ -26,6 +26,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -131,136 +132,239 @@ public class PurgeServlet extends HttpServlet {
 
     System.out.println("Uninstalling plugin with id: " + pluginId);
 
+    Path scripts = getCockpitScriptsPath();
+
+    CamundaPluginSetup camundaPluginSetup = readPluginSetup(pluginId);
+    if (Objects.equals(camundaPluginSetup.getType().toLowerCase().trim(), "custom script")) {
+      uninstallCustomScriptsPlugin(pluginId, scripts, camundaPluginSetup);
+    } else if (Objects.equals(camundaPluginSetup.getType().toLowerCase().trim(), "translation")) {
+      uninstallTranslationPlugin(pluginId);
+    }
+  }
+
+  private void uninstallTranslationPlugin(String pluginId) throws IOException {
+    Path srcDirPath = getCamundaPluginRepoPathForPlugin(pluginId).resolve("src");
+    List<String> locals = Arrays.stream(srcDirPath.toFile()
+                                           .listFiles(f -> f.isFile() && f.getName().endsWith(".json")))
+      .map(File::getName)
+      .collect(Collectors.toList());
+
+    File configFile = getCockpitScriptsPath().resolve("config.js").toFile();
+    if (configFile.exists()) {
+      System.out.println("Found config file!");
+
+      DeleteTranslationPluginConfigAdjuster adjuster = new DeleteTranslationPluginConfigAdjuster();
+      adjuster.setPathToConfigFile(configFile.getPath());
+      adjuster.setLocales(locals);
+      adjuster.adjustConfig();
+    } else {
+      throw new RuntimeException("Could not find config file!");
+    }
+
+    // delete locales files
+    if (srcDirPath.toFile().exists()) {
+
+      Path newPluginFolder = getCockpitScriptsPath().resolve(pluginId);
+      newPluginFolder.toFile().delete();
+
+      Arrays.stream(getCockpitScriptsPath().toFile().listFiles(f -> locals.contains(f.getName())))
+        .forEach(
+          file -> file.delete()
+        );
+
+    } else {
+      throw new RuntimeException("Could not find source folder of plugin!");
+    }
+  }
+
+  private void uninstallCustomScriptsPlugin(String pluginId, Path scripts, CamundaPluginSetup camundaPluginSetup) throws
+                                                                                                                  IOException {
+    Path camundaPluginStore = getCamundaPluginStoreRepoPath();
+    Map<String, Object> config = camundaPluginSetup.getConfig();
+    List<String> ngDeps = (List<String>) config.get("ngDeps");
+
+    File configFile = scripts.resolve("config.js").toFile();
+    if (configFile.exists()) {
+      System.out.println("Found config file!");
+
+      DeleteCustomScriptPluginConfigAdjuster adjuster = new DeleteCustomScriptPluginConfigAdjuster();
+      adjuster.setPathToConfigFile(configFile.getPath());
+      adjuster.setNgDeps(ngDeps);
+      adjuster.setPluginId(pluginId);
+      adjuster.adjustConfig();
+    } else {
+      throw new RuntimeException("Could not find config file!");
+    }
+
+    // delete plugin folder
+    Path srcDirPath = camundaPluginStore.resolve(pluginId).resolve("src");
+    if (srcDirPath.toFile().exists()) {
+
+      Path pluginFolderInScriptDir = scripts.resolve(pluginId);
+      FileUtils.deleteDirectory(pluginFolderInScriptDir.toFile());
+    } else {
+      throw new RuntimeException("Could not find source folder of plugin!");
+    }
+  }
+
+  private CamundaPluginSetup readPluginSetup(String pluginId) throws IOException {
+
+    System.out.println("Reading plugin setup for id: " + pluginId);
+    Path camundaPluginStore = getCamundaPluginStoreRepoPath();
+    File pluginFolder = camundaPluginStore.resolve(pluginId).toFile();
+    if (pluginFolder.exists()) {
+      File file = Arrays.stream(pluginFolder.listFiles(f -> f.getName().equals("setup.json"))).findFirst().get();
+      List<String> lines = Files.readAllLines(file.toPath(), Charset.defaultCharset());
+      String setupJsonAsString = String.join("", lines);
+      return objectMapper.readValue(setupJsonAsString, CamundaPluginSetup.class);
+    } else {
+      throw new RuntimeException("Could not find plugin folder!");
+    }
+  }
+
+  private Path getCamundaPluginStoreRepoPath() {
     String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
     if (isWindows()) {
       classPath = classPath.replaceFirst("/", "");
     }
     Path classesFolderPath = Paths.get(classPath);
     Path webapps = classesFolderPath.getParent().getParent().getParent();
-    Path scripts = webapps.resolve(
-      "camunda" + File.separator + "app" + File.separator + "cockpit" +
-        File.separator + "scripts");
 
     Path webInfPath = classesFolderPath.getParent();
-    Path camundaPluginStore = webInfPath.resolve("camunda-plugin-store");
-    File pluginFolder = camundaPluginStore.resolve(pluginId).toFile();
-    if (pluginFolder.exists()) {
-      File file = Arrays.stream(pluginFolder.listFiles(f -> f.getName().equals("setup.json"))).findFirst().get();
-      List<String> lines = Files.readAllLines(file.toPath(), Charset.defaultCharset());
-      String setupJsonAsString = String.join("", lines);
-      DocumentContext context = JsonPath.parse(setupJsonAsString);
-      List<String> ngDeps = context.read("$.config.ngDeps");
+    return webInfPath.resolve("camunda-plugin-store");
+  }
 
-
-      File configFile = scripts.resolve("config.js").toFile();
-      if (configFile.exists()) {
-        System.out.println("Found config file!");
-
-        DeletePluginConfigAdjuster adjuster = new DeletePluginConfigAdjuster();
-        adjuster.setPathToConfigFile(configFile.getPath());
-        adjuster.setNgDeps(ngDeps);
-        adjuster.setPluginId(pluginId);
-        adjuster.adjustConfig();
-      } else {
-
-        resp.sendError(500);
-        throw new RuntimeException("Could not find config file!");
-      }
-
-      // delete plugin folder
-      Path srcDirPath = camundaPluginStore.resolve(pluginId).resolve("src");
-      if (srcDirPath.toFile().exists()) {
-
-        Path pluginFolderInScriptDir = scripts.resolve(pluginId);
-        FileUtils.deleteDirectory(pluginFolderInScriptDir.toFile());
-      } else {
-        resp.sendError(500);
-        throw new RuntimeException("Could not find source folder of plugin!");
-      }
-
-
-    } else {
-      resp.sendError(500);
-      throw new RuntimeException("Could not find plugin folder!");
-    }
+  private Path getCamundaPluginRepoPathForPlugin(String pluginId) {
+    return getCamundaPluginStoreRepoPath().resolve(pluginId);
   }
 
   private void installPlugin(String pluginId, HttpServletResponse resp) throws IOException {
 
     System.out.println("Installing plugin with id: " + pluginId);
 
-    String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
-    if (isWindows()) {
-      classPath = classPath.replaceFirst("/", "");
-    }
-    Path classesFolderPath = Paths.get(classPath);
-    Path webapps = classesFolderPath.getParent().getParent().getParent();
-    Path scripts = webapps.resolve(
-      "camunda" + File.separator + "app" + File.separator + "cockpit" +
-        File.separator + "scripts");
-
-    Path webInfPath = classesFolderPath.getParent();
-    Path camundaPluginStore = webInfPath.resolve("camunda-plugin-store");
-    File pluginFolder = camundaPluginStore.resolve(pluginId).toFile();
-    if (pluginFolder.exists()) {
-      File file = Arrays.stream(pluginFolder.listFiles(f -> f.getName().equals("setup.json"))).findFirst().get();
-      List<String> lines = Files.readAllLines(file.toPath(), Charset.defaultCharset());
-      String setupJsonAsString = String.join("", lines);
-      DocumentContext context = JsonPath.parse(setupJsonAsString);
-      List<String> ngDeps = context.read("$.config.ngDeps");
+    Path scripts = getCockpitScriptsPath();
 
 
-      File configFile = scripts.resolve("config.js").toFile();
-      if (configFile.exists()) {
-        System.out.println("Found config file!");
-
-        AddPluginConfigAdjuster adjuster = new AddPluginConfigAdjuster();
-        adjuster.setPathToConfigFile(configFile.getPath());
-        adjuster.setNgDeps(ngDeps);
-        adjuster.setPluginId(pluginId);
-        adjuster.adjustConfig();
-      } else {
-
-        resp.sendError(500);
-        throw new RuntimeException("Could not find config file!");
-      }
-
-      // copy files
-      Path srcDirPath = camundaPluginStore.resolve(pluginId).resolve("src");
-      if (srcDirPath.toFile().exists()) {
-
-        Path newPluginFolder = scripts.resolve(pluginId);
-        newPluginFolder.toFile().mkdir();
-
-        try {
-          FileUtils.copyDirectory(srcDirPath.toFile(), newPluginFolder.toFile());
-          Files.copy(srcDirPath, newPluginFolder, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      } else {
-        resp.sendError(500);
-        throw new RuntimeException("Could not find source folder of plugin!");
-      }
-
-
-    } else {
-      resp.sendError(500);
-      throw new RuntimeException("Could not find plugin folder!");
+    CamundaPluginSetup camundaPluginSetup = readPluginSetup(pluginId);
+    System.out.println("Camunda plugin setup: " + camundaPluginSetup);
+    if (Objects.equals(camundaPluginSetup.getType().toLowerCase().trim(), "custom script")) {
+      installCustomScriptsPlugin(pluginId, scripts, camundaPluginSetup);
+    } else if (Objects.equals(camundaPluginSetup.getType().toLowerCase().trim(), "translation")) {
+      installTranslationPlugin(pluginId);
     }
 
   }
 
-  private void retrieveInstalledPlugins(HttpServletResponse response) throws IOException {
+  private Path getCockpitScriptsPath() {
     String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
     if (isWindows()) {
       classPath = classPath.replaceFirst("/", "");
     }
-
     Path classesFolderPath = Paths.get(classPath);
     Path webapps = classesFolderPath.getParent().getParent().getParent();
-    Path scripts = webapps.resolve("camunda" + File.separator +
-                                     "app" + File.separator + "cockpit" + File.separator + "scripts");
+    return webapps.resolve(
+      "camunda" + File.separator + "app" + File.separator + "cockpit" +
+        File.separator + "scripts");
+  }
+
+  private Path getCockpitLocalsPath() {
+    String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    if (isWindows()) {
+      classPath = classPath.replaceFirst("/", "");
+    }
+    Path classesFolderPath = Paths.get(classPath);
+    Path webapps = classesFolderPath.getParent().getParent().getParent();
+    return webapps.resolve(
+      "camunda" + File.separator + "app" + File.separator + "cockpit" +
+        File.separator + "locales");
+  }
+
+  private void installTranslationPlugin(String pluginId) throws IOException {
+
+    Path srcDirPath = getCamundaPluginRepoPathForPlugin(pluginId).resolve("src");
+    List<String> locals = Arrays.stream(srcDirPath.toFile()
+                                           .listFiles(f -> f.isFile() && f.getName().endsWith(".json")))
+      .map(File::getName)
+      .collect(Collectors.toList());
+
+    File configFile = getCockpitScriptsPath().resolve("config.js").toFile();
+    if (configFile.exists()) {
+      System.out.println("Found config file!");
+
+      AddTranslationPluginConfigAdjuster adjuster = new AddTranslationPluginConfigAdjuster();
+      adjuster.setPathToConfigFile(configFile.getPath());
+      adjuster.setLocales(locals);
+      adjuster.adjustConfig();
+    } else {
+      throw new RuntimeException("Could not find config file!");
+    }
+
+    // copy files
+    if (srcDirPath.toFile().exists()) {
+
+      // create an empty folder so we can later find out that this
+      // plugin has been installed
+      Path newPluginFolder = getCockpitScriptsPath().resolve(pluginId);
+      newPluginFolder.toFile().mkdir();
+
+      Arrays.stream(srcDirPath.toFile().listFiles(f -> f.isFile() && f.getName().endsWith(".json")))
+        .forEach(
+          file -> {
+            System.out.println("Found locales file to copy: " + file.getName());
+            try {
+              Files.copy(file.toPath(), getCockpitLocalsPath().resolve(file.getName()), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException("Could not copy locales file", e);
+            }
+          }
+        );
+    } else {
+      throw new RuntimeException("Could not find source folder of plugin!");
+    }
+
+  }
+
+  private void installCustomScriptsPlugin(String pluginId, Path scripts, CamundaPluginSetup camundaPluginSetup) throws
+                                                                                                                IOException {
+
+    System.out.println("Installing custom scripts plugin");
+
+    Map<String, Object> config = camundaPluginSetup.getConfig();
+    List<String> ngDeps = (List<String>) config.get("ngDeps");
+    File configFile = scripts.resolve("config.js").toFile();
+    if (configFile.exists()) {
+      System.out.println("Found config file!");
+
+      AddCustomScriptsPluginConfigAdjuster adjuster = new AddCustomScriptsPluginConfigAdjuster();
+      adjuster.setPathToConfigFile(configFile.getPath());
+      adjuster.setNgDeps(ngDeps);
+      adjuster.setPluginId(pluginId);
+      adjuster.adjustConfig();
+    } else {
+      throw new RuntimeException("Could not find config file!");
+    }
+
+    // copy files
+    Path srcDirPath = getCamundaPluginRepoPathForPlugin(pluginId).resolve("src");
+    if (srcDirPath.toFile().exists()) {
+
+      Path newPluginFolder = scripts.resolve(pluginId);
+      newPluginFolder.toFile().mkdir();
+
+      try {
+        FileUtils.copyDirectory(srcDirPath.toFile(), newPluginFolder.toFile());
+        Files.copy(srcDirPath, newPluginFolder, StandardCopyOption.REPLACE_EXISTING);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    } else {
+      throw new RuntimeException("Could not find source folder of plugin!");
+    }
+  }
+
+  private void retrieveInstalledPlugins(HttpServletResponse response) throws IOException {
+    Path scripts = getCockpitScriptsPath();
     File scriptFolder = scripts.toFile();
     File[] installedPlugins = scriptFolder.listFiles(f -> f.isDirectory() && !f.getName().equals("pluginStore"));
     List<String> result = Arrays.stream(installedPlugins).map(File::getName).collect(Collectors.toList());
@@ -294,12 +398,12 @@ public class PurgeServlet extends HttpServlet {
       git.pull().call();
     }
 
-    List<CamundaPlugin> plugins = new ArrayList<>();
+    List<CamundaPluginDto> plugins = new ArrayList<>();
 //    System.out.println("Pluginstorefolder: " + camundaPluginStore.toString());
     File[] directories = camundaPluginStoreFolder.listFiles(f -> f.isDirectory() && !f.getName().equals(".git"));
 //    Arrays.stream(directories).forEach(System.out::println);
     for (File directory : Objects.requireNonNull(directories)) {
-      CamundaPlugin plugin = new CamundaPlugin();
+      CamundaPluginDto plugin = new CamundaPluginDto();
       plugin.setId(directory.getName());
 
 //      Arrays.stream(directory.listFiles()).forEach(System.out::println);
