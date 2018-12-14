@@ -88,6 +88,7 @@ const template = `
   width: 700px;
   position: relative;
   box-shadow: 5px 5px 5px lightgrey;
+  overflow: hidden;
 }
 
 .pluginStore .successOverlay {
@@ -172,6 +173,56 @@ const template = `
   font-size: 6rem;
 }
 
+.pluginStore > div > ul {
+  transition: margin 1s;
+}
+
+#enterpriseHack li {
+  background-color: lightyellow;
+}
+
+.git-fork {
+  display: block;
+  position: absolute;
+  top: 3rem;
+  right: -7rem;
+  width: 25rem;
+  line-height: 2em;
+  height: 2em;
+  transform: rotate(45deg);
+  background-color: #b5152b;
+  text-indent: .9em;
+}
+.git-fork a {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  color: #dedede;
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+.git-fork a:hover {
+  text-decoration: underline;
+}
+.git-fork a:before, .git-fork a:after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  border-bottom: 1px dashed #dedede;
+}
+.git-fork a:after {
+  bottom: 0;
+  top: auto;
+  border-bottom-width: 0;
+  border-top: 1px dashed #dedede;
+}
+
+
 </style>
 <div class="dashboard pluginStore" style="background-color: #f3f3f3; padding: 0 15em;">
   <h1>Plugin Store</h1>
@@ -179,7 +230,7 @@ const template = `
     <h2>Available Plugins</h2>
     <ul>
       <li ng-repeat="plugin in availablePlugins">
-        <img src="https://thecatapi.com/api/images/get?size=medium&rnd={{plugin.id}}" style="height: 100%;" />
+        <img src="/store/image/{{plugin.id}}.png" style="height: 100%;" />
         <div style="float: right; margin-left: 15px;">
           <h3>{{plugin.title}}</h3>
           <p>{{plugin.description}}</p>
@@ -199,7 +250,7 @@ const template = `
     <h2>Installed Plugins</h2>
     <ul>
       <li ng-repeat="plugin in installedPlugins">
-        <img src="https://thecatapi.com/api/images/get?size=medium&rnd={{plugin.id}}" style="height: 100%;" />
+        <img src="/store/image/{{plugin.id}}.png" style="height: 100%;" />
         <div style="float: right; margin-left: 15px;">
           <h3>{{plugin.title}}</h3>
           <p>{{plugin.description}}</p>
@@ -212,6 +263,26 @@ const template = `
       </li>
     </ul>
   </div>
+  <div style="position: absolute; top: 122px; opacity: 0; transform: scale(.5); transition: 1s;" id="enterpriseHack">
+      <ul>
+        <li style="width: 1420px;">
+          <img src="https://www.livingwellaware.com/wp-content/uploads/2018/07/SUCCESS.jpg" style="height: 100%;" />
+          <img src="https://docs.camunda.org/manual/7.10/webapps/cockpit/img/cockpit-heatmap.png" style="    position: absolute;
+          height: 65%;
+          top: 40px;
+          right: 235px;" />
+          <div style="float: right; margin-left: 15px; width: 500px;">
+            <h3>Enterprise Edition</h3>
+            <p>The right choice for accelerated development and rock-solid production deployments. The Camunda Enterprise Edition comes with Contractual Warranties, SLA based support (up to 24/7/365), Patch releases for further stability, Consulting and Training Services and a whole bunch of awesome Cockpit features!</p>
+          </div>
+          <a class="installButton" style="width: 180px; height: 50px; background-color: #ffe433; color: #333; line-height: 30px;" href="https://camunda.com/enterprise/" target="_blank">Find out more</a>
+          <div class="git-fork">
+            <a href="https://camunda.com/enterprise/">Camunda Certified</a>
+          </div>
+
+        </li>
+      </ul>
+    </div>
 </div>
 `;
 
@@ -308,4 +379,19 @@ define(["angular"], function(angular) {
   ]);
 
   return ngModule;
+});
+
+document.addEventListener("keydown", evt => {
+  if (evt.key === "F7") {
+    console.log("providing entreprise");
+    const ul = document.querySelector(".pluginStore ul");
+    ul.style.marginTop = "280px";
+
+    setTimeout(() => {
+      const ee = document.querySelector("#enterpriseHack");
+      ee.style.opacity = "1";
+      ee.style.transform = "scale(1)";
+    }, 1000);
+  }
+  // console.log(evt.key);
 });
