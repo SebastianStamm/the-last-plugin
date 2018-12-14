@@ -6,15 +6,16 @@ import com.jayway.jsonpath.JsonPath;
 import org.apache.commons.io.FileUtils;
 import org.camunda.bpm.engine.impl.ManagementServiceImpl;
 import org.eclipse.jgit.api.Git;
-//import org.eclipse.jgit.util.FileUtils;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
@@ -28,6 +29,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+//import org.eclipse.jgit.util.FileUtils;
 
 /**
  * Servlet that deployes
@@ -71,6 +74,8 @@ public class PurgeServlet extends HttpServlet {
         installPlugin(req.getParameter("id"), resp);
       } else if (req.getPathInfo() != null  && req.getPathInfo().startsWith("/uninstall")) {
         uninstallPlugin(req.getParameter("id"), resp);
+      } else if (req.getPathInfo() != null  && req.getPathInfo().startsWith("/image")) {
+        getImage(req.getPathInfo(), resp);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -80,6 +85,46 @@ public class PurgeServlet extends HttpServlet {
     System.out.println("Got request from: " + req.getServletPath());
     System.out.println("Context path: " + req.getContextPath());
     System.out.println("Path info: " + req.getPathInfo());
+  }
+
+  private void getImage(String pathInfo, HttpServletResponse response) throws IOException {
+
+
+    String pluginId = pathInfo.substring(pathInfo.lastIndexOf("/") + 1, pathInfo.lastIndexOf("."));
+
+    System.out.println("Returning image for plugin " + pluginId);
+
+
+    String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    if (isWindows()) {
+      classPath = classPath.replaceFirst("/", "");
+    }
+    Path classesFolderPath = Paths.get(classPath);
+
+    Path webInfPath = classesFolderPath.getParent();
+    Path camundaPluginStore = webInfPath.resolve("camunda-plugin-store");
+    File pluginFolder = camundaPluginStore.resolve(pluginId).toFile();
+    if (pluginFolder.exists()) {
+
+      File screenshot = camundaPluginStore.resolve(pluginId).resolve("screenshot.png").toFile();
+
+      if (screenshot.exists()) {
+
+        response.setHeader("Content-Type", "image/png");
+        response.setHeader("success", "yes");
+        FileInputStream fileInputStreamReader = new FileInputStream(screenshot);
+        byte[] bytes = new byte[(int) screenshot.length()];
+        fileInputStreamReader.read(bytes);
+        ServletOutputStream outputStream = response.getOutputStream();
+        outputStream.write(bytes);
+        outputStream.close();
+      } else {
+        throw new RuntimeException("Could not find screen shot for plugin!");
+      }
+
+    } else {
+      throw new RuntimeException("Could not find plugin folder!");
+    }
   }
 
   private void uninstallPlugin(String pluginId, HttpServletResponse resp) throws IOException {
