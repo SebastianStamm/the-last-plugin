@@ -340,7 +340,22 @@ public class PurgeServlet extends HttpServlet {
       adjuster.setPathToConfigFile(configFile.getPath());
       adjuster.setNgDeps(ngDeps);
       adjuster.setPluginId(pluginId);
+      Path configAdditionsPath = getCamundaPluginRepoPathForPlugin(pluginId).resolve("src").resolve("config.js");
+      if (configAdditionsPath.toFile().exists()) {
+
+        System.out.println("Found additional configs to add!");
+        List<String> content = Files.readAllLines(
+          Paths.get(configAdditionsPath.toFile().getPath()),
+          Charset.defaultCharset()
+        );
+        String configAdditions = String.join("", content);
+
+        System.out.println("Config additions:" + configAdditions);
+        adjuster.setAdditionConfigEntries(configAdditions);
+      }
+
       adjuster.adjustConfig();
+
     } else {
       throw new RuntimeException("Could not find config file!");
     }
@@ -354,7 +369,6 @@ public class PurgeServlet extends HttpServlet {
 
       try {
         FileUtils.copyDirectory(srcDirPath.toFile(), newPluginFolder.toFile());
-        Files.copy(srcDirPath, newPluginFolder, StandardCopyOption.REPLACE_EXISTING);
       } catch (IOException e) {
         e.printStackTrace();
       }

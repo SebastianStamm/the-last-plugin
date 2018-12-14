@@ -21,8 +21,13 @@ public class DeleteCustomScriptPluginConfigAdjuster extends ConfigAdjuster {
   private String pluginId;
   private List<String> ngDeps;
 
+  private String startDelimiterForAdditionalConfigEntries;
+  private String endDelimiterForAdditionalConfigEntries;
+
   public void setPluginId(String pluginId) {
     this.pluginId = pluginId;
+    this.startDelimiterForAdditionalConfigEntries = "// -- " + pluginId + " START";
+    this.endDelimiterForAdditionalConfigEntries = "// -- " + pluginId + " END";
   }
 
   public void setNgDeps(List<String> ngDeps) {
@@ -39,5 +44,17 @@ public class DeleteCustomScriptPluginConfigAdjuster extends ConfigAdjuster {
 
     customScriptsContext = customScriptsContext.delete("$.customScripts.paths." + pluginId);
     return customScriptsContext;
+  }
+
+  @Override
+  protected StringBuilder adjustFinalConfig(StringBuilder newConfigFile) {
+    String str = newConfigFile.toString();
+    int start = str.indexOf(startDelimiterForAdditionalConfigEntries);
+    if (start > 0) {
+      str = str.substring(0, start) +
+        str.substring(str.indexOf(endDelimiterForAdditionalConfigEntries) + endDelimiterForAdditionalConfigEntries.length());
+    }
+    newConfigFile = new StringBuilder(str);
+    return super.adjustFinalConfig(newConfigFile);
   }
 }

@@ -20,13 +20,23 @@ public class AddCustomScriptsPluginConfigAdjuster extends ConfigAdjuster {
 
   private String pluginId;
   private List<String> ngDeps;
+  private String additionConfigEntries;
+
+  private String startDelimiterForAdditionalConfigEntries;
+  private String endDelimiterForAdditionalConfigEntries;
 
   public void setPluginId(String pluginId) {
     this.pluginId = pluginId;
+    this.startDelimiterForAdditionalConfigEntries = "// -- " + pluginId + " START";
+    this.endDelimiterForAdditionalConfigEntries = "// -- " + pluginId + " END";
   }
 
   public void setNgDeps(List<String> ngDeps) {
     this.ngDeps = ngDeps;
+  }
+
+  public void setAdditionConfigEntries(String additionConfigEntries) {
+    this.additionConfigEntries = additionConfigEntries;
   }
 
   protected DocumentContext adjustCustomScripts(DocumentContext customScriptsContext) {
@@ -47,5 +57,15 @@ public class AddCustomScriptsPluginConfigAdjuster extends ConfigAdjuster {
       );
     }
     return customScriptsContext;
+  }
+
+  @Override
+  protected StringBuilder adjustFinalConfig(StringBuilder newConfigFile) {
+    if (additionConfigEntries != null) {
+      newConfigFile.append(startDelimiterForAdditionalConfigEntries + "\n");
+      newConfigFile.append(additionConfigEntries + "\n");
+      newConfigFile.append(endDelimiterForAdditionalConfigEntries + "\n");
+    }
+    return super.adjustFinalConfig(newConfigFile);
   }
 }

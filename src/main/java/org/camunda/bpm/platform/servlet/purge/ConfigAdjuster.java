@@ -127,6 +127,7 @@ public abstract class ConfigAdjuster {
       newConfigFile.append(lines.get(i) + "\n");
     }
 
+    newConfigFile = adjustFinalConfig(newConfigFile);
     System.out.println(newConfigFile);
 
     try (PrintWriter out = new PrintWriter(pathToConfigFile)) {
@@ -134,6 +135,11 @@ public abstract class ConfigAdjuster {
     }
 
 //    System.out.println(json);
+  }
+
+  protected StringBuilder adjustFinalConfig(StringBuilder newConfigFile) {
+    // by default change nothing
+    return newConfigFile;
   }
 
   protected abstract DocumentContext adjustCustomScripts(DocumentContext customScriptsContext);

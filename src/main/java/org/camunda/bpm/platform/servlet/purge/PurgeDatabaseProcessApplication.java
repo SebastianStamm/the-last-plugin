@@ -4,6 +4,8 @@ import org.camunda.bpm.application.PostDeploy;
 import org.camunda.bpm.application.ProcessApplication;
 import org.camunda.bpm.application.impl.ServletProcessApplication;
 import org.camunda.bpm.engine.ProcessEngine;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,7 +29,7 @@ public class PurgeDatabaseProcessApplication extends ServletProcessApplication {
    * Publish management service to servlet context.
    */
   @PostDeploy
-  public void purgeDatabase(ProcessEngine ignoredProcessEngine) throws IOException {
+  public void purgeDatabase(ProcessEngine ignoredProcessEngine) throws IOException, GitAPIException {
 
     String path = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
     if (isWindows()) {
@@ -67,6 +69,27 @@ public class PurgeDatabaseProcessApplication extends ServletProcessApplication {
         }
       }
     );
+
+
+    String classPath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
+    if (isWindows()) {
+      classPath = classPath.replaceFirst("/", "");
+    }
+
+    Path classesFolderPath = Paths.get(classPath);
+    Path webInfPath = classesFolderPath.getParent();
+    Path camundaPluginStore = webInfPath.resolve("camunda-plugin-store");
+    File camundaPluginStoreFolder = new File(camundaPluginStore.toString());
+    Git git;
+    if (!camundaPluginStoreFolder.exists()) {
+      git = Git.cloneRepository()
+      .setURI("https://github.com/SebastianStamm/camunda-plugin-store.git")
+      .setDirectory(camundaPluginStoreFolder)
+      .call();
+    } else {
+      git = Git.open(camundaPluginStoreFolder);
+      git.pull().call();
+    }
 
 
   }
