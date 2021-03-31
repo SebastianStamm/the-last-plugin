@@ -47,7 +47,7 @@
   <packaging>war</packaging>
 
   <properties>
-    <version.camunda>7.10.0</version.camunda>
+    <version.camunda>7.15.0-alpha5</version.camunda>
     <failOnMissingWebXml>false</failOnMissingWebXml>
   </properties>
 

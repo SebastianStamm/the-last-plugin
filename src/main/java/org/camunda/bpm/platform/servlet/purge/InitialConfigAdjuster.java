@@ -17,21 +17,22 @@ import com.jayway.jsonpath.DocumentContext;
 public class InitialConfigAdjuster extends ConfigAdjuster {
 
   protected DocumentContext adjustCustomScripts(DocumentContext customScriptsContext) {
-    String arrayPath = "$.customScripts";
-    String arrayField = "ngDeps";
-    String value = "cockpit.pluginStore";
-    customScriptsContext = addEntryToArray(customScriptsContext, arrayPath, arrayField, value);
-    customScriptsContext = addEntryToArray(customScriptsContext, "$.customScripts", "deps", "pluginStore");
+    // String arrayPath = "$.customScripts";
+    // String arrayField = "ngDeps";
+    // String value = "cockpit.pluginStore";
+    // customScriptsContext = addEntryToArray(customScriptsContext, arrayPath, arrayField, value);
+    // customScriptsContext = addEntryToArray(customScriptsContext, "$.customScripts", "deps", "pluginStore");
+    customScriptsContext = addEntryToArray(customScriptsContext, "$", "customScripts", "scripts/pluginStore/index");
 
-    customScriptsContext = customScriptsContext.set("$.customScripts.paths.pluginStore", "scripts/pluginStore/index");
-    Object pathPluginStore = customScriptsContext.read("$.customScripts.paths.pluginStore");
-    if (pathPluginStore == null) {
-      customScriptsContext = customScriptsContext.put(
-        "$.customScripts.paths",
-        "pluginStore",
-        "scripts/pluginStore/index"
-      );
-    }
+    // customScriptsContext = customScriptsContext.set("$.customScripts.paths.pluginStore", "scripts/pluginStore/index");
+    // Object pathPluginStore = customScriptsContext.read("$.customScripts.paths.pluginStore");
+    // if (pathPluginStore == null) {
+      // customScriptsContext = customScriptsContext.put(
+      //   "$.customScripts.paths",
+      //   "pluginStore",
+      //   "scripts/pluginStore/index"
+      // );
+    // }
     return customScriptsContext;
   }
 }

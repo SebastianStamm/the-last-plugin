@@ -29,16 +29,8 @@ import java.util.Map;
 public abstract class ConfigAdjuster {
 
   public final ObjectMapper objectMapper = new ObjectMapper();
-  public final String CUSTOM_SCRIPTS = "{\n" +
-    "\n" +
-    "    \"ngDeps\": [ ],\n" +
-    "\n" +
-    "    \"deps\": [ ],\n" +
-    "\n" +
-    "    \"paths\": {\n" +
-    "    }\n" +
-    "\n" +
-    "  }";
+  public final String CUSTOM_SCRIPTS = "[\n" +
+    "  ]";
 
   private final String LOCALES =
     "{\n" +
@@ -58,7 +50,7 @@ public abstract class ConfigAdjuster {
     String json = "";
     List<String> lines = Files.readAllLines(Paths.get(pathToConfigFile), Charset.defaultCharset());
     int indexOfLineWithConfig = 0;
-    String configName = "window.camCockpitConf";
+    String configName = "export default";
     for (int i = 0; i < lines.size(); i++) {
       if (lines.get(i).contains(configName)) {
         indexOfLineWithConfig = i;
@@ -92,7 +84,7 @@ public abstract class ConfigAdjuster {
     DocumentContext parse = JsonPath.using(conf).parse(json);
 
     // create custom scripts if does not exists
-    Object customSCriptObject = objectMapper.readValue(CUSTOM_SCRIPTS, Map.class);
+    Object customSCriptObject = objectMapper.readValue(CUSTOM_SCRIPTS, List.class);
     Object result = parse.read("$.customScripts");
     String jsonString = parse.jsonString();
     if (result == null) {
@@ -119,7 +111,7 @@ public abstract class ConfigAdjuster {
       newConfigFile.append(lines.get(i) + "\n");
     }
 
-    newConfigFile.append(configName + " = ");
+    newConfigFile.append(configName + " ");
     newConfigFile.append(jsonToPretty(jsonString));
     newConfigFile.append(";\n");
 
@@ -152,6 +144,15 @@ public abstract class ConfigAdjuster {
     customScriptsContext = customScriptsContext.put(arrayPath, arrayField, nDepsList);
     return customScriptsContext;
   }
+
+  // protected DocumentContext addEntryToSingleArray(DocumentContext customScriptsContext, String arrayPath,
+  //                                         String arrayField, String value) {
+  //   List nDepsList = customScriptsContext.read(arrayPath + "." + arrayField);
+  //   nDepsList.removeIf(e -> e.equals(value));
+  //   nDepsList.add(value);
+  //   customScriptsContext = customScriptsContext.put(arrayPath, arrayField, nDepsList);
+  //   return customScriptsContext;
+  // }
 
   protected DocumentContext deleteEntryFromArray(DocumentContext customScriptsContext, String arrayPath,
                                           String arrayField, String value) {
