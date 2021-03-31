@@ -35,14 +35,16 @@ public class DeleteCustomScriptPluginConfigAdjuster extends ConfigAdjuster {
   }
 
   protected DocumentContext adjustCustomScripts(DocumentContext customScriptsContext) {
-    String arrayPath = "$.customScripts";
-    String arrayField = "ngDeps";
-    for (String ngDep : ngDeps) {
-      customScriptsContext = deleteEntryFromArray(customScriptsContext, arrayPath, arrayField, ngDep);
-    }
-    customScriptsContext = deleteEntryFromArray(customScriptsContext, "$.customScripts", "deps", pluginId);
+    // String arrayPath = "$.customScripts";
+    // String arrayField = "ngDeps";
+    // for (String ngDep : ngDeps) {
+    //   customScriptsContext = deleteEntryFromArray(customScriptsContext, arrayPath, arrayField, ngDep);
+    // }
+    // customScriptsContext = deleteEntryFromArray(customScriptsContext, "$.customScripts", "deps", pluginId);
 
-    customScriptsContext = customScriptsContext.delete("$.customScripts.paths." + pluginId);
+    // customScriptsContext = customScriptsContext.delete("$.customScripts.paths." + pluginId);
+
+    customScriptsContext = deleteEntryFromArray(customScriptsContext, "$", "customScripts", "scripts/" + pluginId +"/index");
     return customScriptsContext;
   }
 

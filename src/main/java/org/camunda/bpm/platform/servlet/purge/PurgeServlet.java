@@ -181,7 +181,7 @@ public class PurgeServlet extends HttpServlet {
                                                                                                                   IOException {
     Path camundaPluginStore = getCamundaPluginStoreRepoPath();
     Map<String, Object> config = camundaPluginSetup.getConfig();
-    List<String> ngDeps = (List<String>) config.get("ngDeps");
+    // List<String> ngDeps = (List<String>) config.get("ngDeps");
 
     File configFile = scripts.resolve("config.js").toFile();
     if (configFile.exists()) {
@@ -189,7 +189,7 @@ public class PurgeServlet extends HttpServlet {
 
       DeleteCustomScriptPluginConfigAdjuster adjuster = new DeleteCustomScriptPluginConfigAdjuster();
       adjuster.setPathToConfigFile(configFile.getPath());
-      adjuster.setNgDeps(ngDeps);
+      // adjuster.setNgDeps(ngDeps);
       adjuster.setPluginId(pluginId);
       adjuster.adjustConfig();
     } else {
@@ -331,14 +331,14 @@ public class PurgeServlet extends HttpServlet {
     System.out.println("Installing custom scripts plugin");
 
     Map<String, Object> config = camundaPluginSetup.getConfig();
-    List<String> ngDeps = (List<String>) config.get("ngDeps");
+    // List<String> ngDeps = (List<String>) config.get("ngDeps");
     File configFile = scripts.resolve("config.js").toFile();
     if (configFile.exists()) {
       System.out.println("Found config file!");
 
       AddCustomScriptsPluginConfigAdjuster adjuster = new AddCustomScriptsPluginConfigAdjuster();
       adjuster.setPathToConfigFile(configFile.getPath());
-      adjuster.setNgDeps(ngDeps);
+      // adjuster.setNgDeps(ngDeps);
       adjuster.setPluginId(pluginId);
       Path configAdditionsPath = getCamundaPluginRepoPathForPlugin(pluginId).resolve("src").resolve("config.js");
       if (configAdditionsPath.toFile().exists()) {

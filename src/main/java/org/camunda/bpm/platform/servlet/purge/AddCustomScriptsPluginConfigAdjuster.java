@@ -40,22 +40,23 @@ public class AddCustomScriptsPluginConfigAdjuster extends ConfigAdjuster {
   }
 
   protected DocumentContext adjustCustomScripts(DocumentContext customScriptsContext) {
-    String arrayPath = "$.customScripts";
-    String arrayField = "ngDeps";
-    for (String ngDep : ngDeps) {
-      customScriptsContext = addEntryToArray(customScriptsContext, arrayPath, arrayField, ngDep);
-    }
-    customScriptsContext = addEntryToArray(customScriptsContext, "$.customScripts", "deps", pluginId);
+    // String arrayPath = "$.customScripts";
+    // String arrayField = "ngDeps";
+    // for (String ngDep : ngDeps) {
+    //   customScriptsContext = addEntryToArray(customScriptsContext, arrayPath, arrayField, ngDep);
+    // }
+    // customScriptsContext = addEntryToArray(customScriptsContext, "$.customScripts", "deps", pluginId);
+    customScriptsContext = addEntryToArray(customScriptsContext, "$", "customScripts", "scripts/" + pluginId +"/index");
 
-    customScriptsContext = customScriptsContext.set("$.customScripts.paths." + pluginId, "scripts/" +pluginId + "/index");
-    Object pathPluginStore = customScriptsContext.read("$.customScripts.paths." + pluginId);
-    if (pathPluginStore == null) {
-      customScriptsContext = customScriptsContext.put(
-        "$.customScripts.paths",
-        pluginId,
-        "scripts/" +pluginId + "/index"
-      );
-    }
+    // customScriptsContext = customScriptsContext.set("$.customScripts.paths." + pluginId, "scripts/" +pluginId + "/index");
+    // Object pathPluginStore = customScriptsContext.read("$.customScripts.paths." + pluginId);
+    // if (pathPluginStore == null) {
+    //   customScriptsContext = customScriptsContext.put(
+    //     "$.customScripts.paths",
+    //     pluginId,
+    //     "scripts/" +pluginId + "/index"
+    //   );
+    // }
     return customScriptsContext;
   }
 

@@ -162,8 +162,6 @@ const template = `
 	text-transform: uppercase;
 	border-radius: 1rem;
 	font-family: 'Courier';
-	-webkit-mask-image: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/8399/grunge.png');
-  -webkit-mask-size: 944px 604px;
 }
 
 .is-nope {
@@ -226,44 +224,9 @@ const template = `
 </style>
 <div class="dashboard pluginStore" style="background-color: #f3f3f3; padding: 0 15em;">
   <h1>Plugin Store</h1>
-  <div ng-if="availablePlugins.length > 0">
-    <h2>Available Plugins</h2>
-    <ul>
-      <li ng-repeat="plugin in availablePlugins">
-        <div style="display: inline; height: 100%; width: 325px; flex: none; background-size: cover; background-image: url(/store/image/{{plugin.id}}.png); background-position: center;"></div>
-        <!--img src="/store/image/{{plugin.id}}.png" style="height: 100%;" /-->
-        <div style="float: right; margin-left: 15px;">
-          <h3>{{plugin.title}}</h3>
-          <p>{{plugin.description}}</p>
-          </div>
-        <button class="installButton" ng-click="install(plugin)" ng-if="!isInstalling(plugin) && !isInstalled(plugin)">Install</button>
-        <button style="cursor: default;" class="installButton" ng-if="isInstalling(plugin)"><div class="loader"></div></button>
-        <div class="successOverlay" id="overlay_{{plugin.id}}">
-          <span class="checkmark">
-            <div class="checkmark_stem"></div>
-            <div class="checkmark_kick"></div>
-          </span>
-        </div>
-      </li>
-    </ul>
+  <div id="availableContainer">
   </div>
-  <div ng-if="installedPlugins.length > 0">
-    <h2>Installed Plugins</h2>
-    <ul>
-      <li ng-repeat="plugin in installedPlugins">
-      <div style="display: inline; height: 100%; width: 325px; flex: none; background-size: cover; background-image: url(/store/image/{{plugin.id}}.png); background-position: center;"></div>
-        <!--img src="/store/image/{{plugin.id}}.png" style="height: 100%;" /-->
-        <div style="float: right; margin-left: 15px;">
-          <h3>{{plugin.title}}</h3>
-          <p>{{plugin.description}}</p>
-          </div>
-        <button style="background-color:#ff3333;" class="installButton" ng-if="!isUninstalling(plugin) && !isUninstalled(plugin)" ng-click="uninstall(plugin)">Remove</button>
-        <button style="background-color:#ff3333; cursor: default;" class="installButton" ng-if="isUninstalling(plugin)"><div class="loader"></div></button>
-        <div class="removeOverlay" id="overlay_{{plugin.id}}">
-          <span class="stamp is-nope">Removed</span>
-        </div>
-      </li>
-    </ul>
+  <div id="installedContainer">
   </div>
   <div style="position: absolute; top: 122px; opacity: 0; transform: scale(.5); transition: 1s; display: none;" id="enterpriseHack">
       <ul>
@@ -288,100 +251,210 @@ const template = `
 </div>
 `;
 
-define(["angular"], function(angular) {
-  var ngModule = angular.module("cockpit.pluginStore", []);
+export default [
+  {
+    id: "cockpit.pluginStore.navigation",
+    pluginPoint: "cockpit.navigation",
+    properties: {
+      path: "/plugins",
+    },
+    render: (node) => {
+      node.innerHTML = `<a href="#/plugins">Plugin Store</a>`;
+    },
+    priority: 1000,
+  },
+  {
+    id: "cockpit.pluginStore.route",
+    pluginPoint: "cockpit.route",
+    properties: {
+      path: "/plugins",
+    },
+    render: async (node) => {
+      console.log("fetching all plugins");
+      const allPluginsR = await fetch("/store/plugins");
+      const allPlugins = await allPluginsR.json();
 
-  ngModule.config([
-    "ViewsProvider",
-    "$routeProvider",
-    function(ViewsProvider, routeProvider) {
-      routeProvider.when("/plugins", {
-        template,
-        controller: [
-          "$scope",
-          async function($scope) {
-            $scope.$root.showBreadcrumbs = false;
+      console.log("fetching installed plugins");
+      const installedReqR = await fetch("/store/installed");
+      const installedPlugins = (await installedReqR.json()).map((id) =>
+        allPlugins.find((plugin) => plugin.id === id)
+      );
 
-            console.log("fetching all plugins");
-            const allPlugins = await fetch("/store/plugins");
-            $scope.allPlugins = await allPlugins.json();
+      const availablePlugins = allPlugins.filter(
+        ({ id }) => !installedPlugins.find((plugin) => plugin.id === id)
+      );
 
-            console.log("fetching installed plugins");
-            const installedReq = await fetch("/store/installed");
-            $scope.installedPlugins = (await installedReq.json()).map(id =>
-              $scope.allPlugins.find(plugin => plugin.id === id)
-            );
+      console.log("available", availablePlugins);
+      console.log("installed", installedPlugins);
 
-            $scope.availablePlugins = $scope.allPlugins.filter(
-              ({ id }) =>
-                !$scope.installedPlugins.find(plugin => plugin.id === id)
-            );
+      node.innerHTML = template;
 
-            $scope.installingPlugins = [];
-            $scope.uninstallingPlugins = [];
-            $scope.successPlugins = [];
-            $scope.uninstalledPlugins = [];
+      if (availablePlugins.length > 0) {
+        let n = node.querySelector("#availableContainer");
+        n.innerHTML = `<h2>Available Plugins</h2>
+        <ul></ul>`;
 
-            $scope.install = async plugin => {
-              $scope.installingPlugins.push(plugin.id);
-              console.log("should install", plugin);
-              await fetch("/store/install?id=" + plugin.id);
-              $scope.successPlugins.push(plugin.id);
-              $scope.installingPlugins = $scope.installingPlugins.filter(
-                id => id !== plugin.id
-              );
-              document.querySelector("#overlay_" + plugin.id).style.opacity =
-                "1";
-              $scope.$apply();
-            };
+        n = n.querySelector("ul");
 
-            $scope.uninstall = async plugin => {
-              $scope.uninstallingPlugins.push(plugin.id);
-              console.log("should uninstall", plugin);
-              await fetch("/store/uninstall?id=" + plugin.id);
-              $scope.uninstalledPlugins.push(plugin.id);
-              $scope.uninstallingPlugins = $scope.uninstallingPlugins.filter(
-                id => id !== plugin.id
-              );
-              document.querySelector("#overlay_" + plugin.id).style.opacity =
-                "1";
-              $scope.$apply();
-            };
+        availablePlugins.forEach((plugin) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<div style="display: inline; height: 100%; width: 325px; flex: none; background-size: cover; background-image: url(/store/image/${plugin.id}.png); background-position: center;"></div>
+          <!--img src="/store/image/${plugin.id}.png" style="height: 100%;" /-->
+          <div style="float: right; margin-left: 15px;">
+            <h3>${plugin.title}</h3>
+            <p>${plugin.description}</p>
+            </div>
+          <button class="installButton">Install</button>
+          <div class="successOverlay" id="overlay_{{plugin.id}}">
+            <span class="checkmark">
+              <div class="checkmark_stem"></div>
+              <div class="checkmark_kick"></div>
+            </span>
+          </div>`;
 
-            $scope.isInstalling = ({ id }) =>
-              $scope.installingPlugins.includes(id);
+          const btn = li.querySelector("button");
+          btn.addEventListener("click", async () => {
+            btn.innerHTML = '<div class="loader"></div>';
+            btn.style.cursor = "default";
+            await fetch("/store/install?id=" + plugin.id);
+            li.querySelector(".successOverlay").style.opacity = "1";
+            btn.style.opacity = "0";
+          });
 
-            $scope.isUninstalling = ({ id }) =>
-              $scope.uninstallingPlugins.includes(id);
+          n.appendChild(li);
+        });
+      }
 
-            $scope.isInstalled = ({ id }) => {
-              return $scope.successPlugins.includes(id);
-            };
-            $scope.isUninstalled = ({ id }) =>
-              $scope.uninstalledPlugins.includes(id);
+      if (installedPlugins.length > 0) {
+        let n = node.querySelector("#installedContainer");
+        n.innerHTML = `<h2>Installed Plugins</h2>
+        <ul></ul>`;
 
-            $scope.$apply();
-          }
-        ],
-        authentication: "required"
-      });
+        n = n.querySelector("ul");
 
-      ViewsProvider.registerDefaultView("cockpit.navigation", {
-        id: "cockpit.pluginStore",
-        label: "Plugin Store",
-        pagePath: "#/plugins",
-        priority: 9001,
-        checkActive: function(path) {
-          return path.indexOf("#/plugins") > -1;
-        }
-      });
-    }
-  ]);
+        installedPlugins.forEach((plugin) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<div style="display: inline; height: 100%; width: 325px; flex: none; background-size: cover; background-image: url(/store/image/${plugin.id}.png); background-position: center;"></div>
+          <!--img src="/store/image/${plugin.id}.png" style="height: 100%;" /-->
+          <div style="float: right; margin-left: 15px;">
+            <h3>${plugin.title}</h3>
+            <p>${plugin.description}</p>
+            </div>
+            <button style="background-color:#ff3333;" class="installButton">Remove</button>
+            <div class="removeOverlay" id="overlay_{{plugin.id}}">
+              <span class="stamp is-nope">Removed</span>
+            </div>`;
 
-  return ngModule;
-});
+          const btn = li.querySelector("button");
+          btn.addEventListener("click", async () => {
+            btn.innerHTML = '<div class="loader"></div>';
+            btn.style.cursor = "default";
+            await fetch("/store/uninstall?id=" + plugin.id);
+            li.querySelector(".removeOverlay").style.opacity = "1";
+            btn.style.opacity = "0";
+          });
 
-document.addEventListener("keydown", evt => {
+          n.appendChild(li);
+        });
+      }
+    },
+  },
+];
+
+// define(["angular"], function(angular) {
+//   var ngModule = angular.module("cockpit.pluginStore", []);
+
+//   ngModule.config([
+//     "ViewsProvider",
+//     "$routeProvider",
+//     function(ViewsProvider, routeProvider) {
+//       routeProvider.when("/plugins", {
+//         template,
+//         controller: [
+//           "$scope",
+//           async function($scope) {
+//             $scope.$root.showBreadcrumbs = false;
+
+//             console.log("fetching all plugins");
+//             const allPlugins = await fetch("/store/plugins");
+//             $scope.allPlugins = await allPlugins.json();
+
+//             console.log("fetching installed plugins");
+//             const installedReq = await fetch("/store/installed");
+//             $scope.installedPlugins = (await installedReq.json()).map(id =>
+//               $scope.allPlugins.find(plugin => plugin.id === id)
+//             );
+
+//             $scope.availablePlugins = $scope.allPlugins.filter(
+//               ({ id }) =>
+//                 !$scope.installedPlugins.find(plugin => plugin.id === id)
+//             );
+
+//             $scope.installingPlugins = [];
+//             $scope.uninstallingPlugins = [];
+//             $scope.successPlugins = [];
+//             $scope.uninstalledPlugins = [];
+
+//             $scope.install = async plugin => {
+//               $scope.installingPlugins.push(plugin.id);
+//               console.log("should install", plugin);
+//               await fetch("/store/install?id=" + plugin.id);
+//               $scope.successPlugins.push(plugin.id);
+//               $scope.installingPlugins = $scope.installingPlugins.filter(
+//                 id => id !== plugin.id
+//               );
+//               document.querySelector("#overlay_" + plugin.id).style.opacity =
+//                 "1";
+//               $scope.$apply();
+//             };
+
+//             $scope.uninstall = async plugin => {
+//               $scope.uninstallingPlugins.push(plugin.id);
+//               console.log("should uninstall", plugin);
+//               await fetch("/store/uninstall?id=" + plugin.id);
+//               $scope.uninstalledPlugins.push(plugin.id);
+//               $scope.uninstallingPlugins = $scope.uninstallingPlugins.filter(
+//                 id => id !== plugin.id
+//               );
+//               document.querySelector("#overlay_" + plugin.id).style.opacity =
+//                 "1";
+//               $scope.$apply();
+//             };
+
+//             $scope.isInstalling = ({ id }) =>
+//               $scope.installingPlugins.includes(id);
+
+//             $scope.isUninstalling = ({ id }) =>
+//               $scope.uninstallingPlugins.includes(id);
+
+//             $scope.isInstalled = ({ id }) => {
+//               return $scope.successPlugins.includes(id);
+//             };
+//             $scope.isUninstalled = ({ id }) =>
+//               $scope.uninstalledPlugins.includes(id);
+
+//             $scope.$apply();
+//           }
+//         ],
+//         authentication: "required"
+//       });
+
+//       ViewsProvider.registerDefaultView("cockpit.navigation", {
+//         id: "cockpit.pluginStore",
+//         label: "Plugin Store",
+//         pagePath: "#/plugins",
+//         priority: 9001,
+//         checkActive: function(path) {
+//           return path.indexOf("#/plugins") > -1;
+//         }
+//       });
+//     }
+//   ]);
+
+//   return ngModule;
+// });
+
+document.addEventListener("keydown", (evt) => {
   if (evt.key === "F7") {
     console.log("providing entreprise");
     const ul = document.querySelector(".pluginStore ul");
