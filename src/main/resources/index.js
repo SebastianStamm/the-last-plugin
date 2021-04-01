@@ -455,7 +455,7 @@ export default [
 // });
 
 document.addEventListener("keydown", (evt) => {
-  if (evt.key === "F7") {
+  if (evt.key === "F8") {
     console.log("providing entreprise");
     const ul = document.querySelector(".pluginStore ul");
     ul.style.marginTop = "280px";
